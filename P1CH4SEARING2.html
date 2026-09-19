@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>座位表</title>
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  html, body {
+    touch-action: manipulation; /* 允许点击，但禁止双指缩放/双击缩放 */
+  }
+
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: "Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif;
+    background: linear-gradient(135deg, #fef9e7 0%, #e8f8f5 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    color: #e67e22;
+    font-size: 32px;
+    margin: 10px 0 5px;
+    text-shadow: 2px 2px 0 #fff;
+  }
+
+  .subtitle {
+    color: #7f8c8d;
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+
+  .question-box {
+    background: #fff;
+    border: 3px dashed #f39c12;
+    border-radius: 20px;
+    padding: 15px 30px;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #2c3e50;
+    font-weight: bold;
+    text-align: center;
+    min-width: 400px;
+    max-width: 95vw;
+    box-shadow: 0 4px 10px rgba(243, 156, 18, 0.2);
+  }
+
+  .question-box .highlight {
+    color: #e74c3c;
+    font-size: 28px;
+  }
+
+  .mode-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #e91e63;
+    background: #fce4ec;
+    padding: 8px 25px;
+    border-radius: 25px;
+    margin-bottom: 15px;
+    display: inline-block;
+  }
+
+  .main-area {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .seat-table {
+    border-collapse: separate;
+    border-spacing: 8px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    touch-action: none; /* 防止拖动座位表时滚动页面 */
+  }
+
+  .seat-table td {
+    width: 90px;
+    height: 90px;
+    padding: 0;
+    vertical-align: middle;
+    text-align: center;
+    position: relative;
+  }
+
+  .seat-table td.col-label-left {
+    width: 70px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #7f8c8d;
+    background: transparent;
+  }
+
+  .seat-table td.row-label-bottom {
+    height: 40px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #7f8c8d;
+    background: transparent;
+  }
+
+  .seat-table td.teacher-desk {
+    background: #b5651d;
+    color: #fff;
+    border-radius: 12px;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    height: 60px;
+    box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+  }
+
+  .seat {
+    width: 90px;
+    height: 90px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+    border: 3px dashed rgba(0, 0, 0, 0.08);
+    margin: 0 auto;
+    touch-action: none; /* 禁止触摸滚动/缩放 */
+    position: relative;
+  }
+
+  .seat.over {
+    transform: scale(1.08);
+    border: 3px dashed #e67e22;
+    box-shadow: 0 0 15px rgba(230, 126, 34, 0.5);
+  }
+
+  .color-pink   { background: #ffd6e0; }
+  .color-yellow { background: #fff4c2; }
+  .color-green  { background: #d4f5d4; }
+  .color-blue   { background: #d6eaff; }
+  .color-purple { background: #e5d4ff; }
+
+  .student {
+    font-size: 46px;
+    cursor: grab;
+    transition: transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    touch-action: none; /* 关键：允许拖动而不滚动页面 */
+    -webkit-user-drag: none; /* 禁用原生拖拽图片行为 */
+    pointer-events: auto; /* 确保可以触摸 */
+  }
+
+  .student:active {
+    cursor: grabbing;
+    transform: scale(1.15);
+  }
+
+  .student.dragging {
+    opacity: 0.4;
+  }
+
+  .waiting-area {
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 180px;
+    touch-action: none;
+  }
+
+  .waiting-area h2 {
+    color: #8e44ad;
+    font-size: 20px;
+    margin: 0 0 15px;
+  }
+
+  .waiting-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    touch-action: none;
+  }
+
+  .waiting-slot {
+    width: 80px;
+    height: 80px;
+    background: #f5f0ff;
+    border: 2px dashed #b39ddb;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    touch-action: none;
+  }
+
+  .waiting-slot .name-tag {
+    position: absolute;
+    bottom: -20px;
+    font-size: 14px;
+    color: #666;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    touch-action: manipulation;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 14px 30px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.15);
+    color: #fff;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+  }
+
+  #btnNewQ {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+  }
+
+  #btnReset {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+  }
+
+  .feedback {
+    font-size: 26px;
+    font-weight: bold;
+    margin-top: 15px;
+    min-height: 40px;
+    text-align: center;
+  }
+
+  .feedback.correct {
+    color: #27ae60;
+    animation: pop 0.5s;
+  }
+
+  .feedback.wrong {
+    color: #e74c3c;
+    animation: shake 0.5s;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0.5); }
+    70% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+
+  .mark {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 28px;
+    animation: pop 0.3s;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .reward-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    touch-action: manipulation;
+  }
+
+  .reward-overlay.show {
+    display: flex;
+  }
+
+  .reward-box {
+    background: #fff;
+    border-radius: 30px;
+    padding: 40px 60px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    animation: pop 0.5s;
+  }
+
+  .reward-box .flower {
+    font-size: 100px;
+    animation: spin 2s infinite linear;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(-15deg); }
+    50% { transform: rotate(15deg); }
+    100% { transform: rotate(-15deg); }
+  }
+
+  .reward-box h2 {
+    color: #e74c3c;
+    font-size: 32px;
+    margin: 10px 0;
+  }
+
+  .reward-box button {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    margin-top: 20px;
+  }
+
+  .progress {
+    font-size: 24px;
+    color: #f39c12;
+    margin-top: 10px;
+    letter-spacing: 5px;
+  }
+
+  /* 移动端优化 */
+  @media (max-width: 768px) {
+    body { padding: 10px; }
+    h1 { font-size: 26px; }
+    .subtitle { font-size: 15px; }
+    .question-box { min-width: unset; width: 95vw; font-size: 20px; padding: 12px 15px; }
+    .question-box .highlight { font-size: 22px; }
+    .main-area { gap: 15px; }
+    .seat-table { border-spacing: 4px; padding: 10px; }
+    .seat-table td { width: 64px; height: 64px; }
+    .seat { width: 64px; height: 64px; font-size: 30px; border-radius: 8px; }
+    .student { font-size: 34px; }
+    .seat-table td.col-label-left { width: 48px; font-size: 13px; }
+    .seat-table td.row-label-bottom { height: 30px; font-size: 13px; }
+    .seat-table td.teacher-desk { font-size: 16px; height: 44px; letter-spacing: 1px; }
+    .waiting-slot { width: 60px; height: 60px; }
+    .waiting-slot .name-tag { font-size: 12px; bottom: -18px; }
+    .waiting-area { padding: 12px; min-width: 120px; }
+    .waiting-area h2 { font-size: 16px; }
+    .btn-group button { font-size: 16px; padding: 10px 18px; }
+    .feedback { font-size: 20px; }
+    .progress { font-size: 18px; }
+    .reward-box { padding: 25px 35px; }
+    .reward-box .flower { font-size: 70px; }
+    .reward-box h2 { font-size: 24px; }
+  }
+
+  @media (max-width: 480px) {
+    .seat-table td { width: 52px; height: 52px; }
+    .seat { width: 52px; height: 52px; font-size: 24px; border-radius: 6px; }
+    .student { font-size: 28px; }
+    .seat-table td.col-label-left { width: 40px; font-size: 11px; }
+    .seat-table td.row-label-bottom { height: 26px; font-size: 11px; }
+    .waiting-slot { width: 50px; height: 50px; }
+    .waiting-slot .name-tag { font-size: 11px; bottom: -16px; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>🐘 座位表</h1>
+  <p class="subtitle">拖曳小朋友到正確的座位上吧！</p>
+
+  <div class="question-box" id="questionBox">
+    請點擊「出題」開始練習 😊
+  </div>
+
+  <div style="text-align:center;">
+    <span class="mode-title" id="modeTitle">📐 座位表 (5個 x 5行)</span>
+  </div>
+
+  <div class="main-area">
+    <table class="seat-table" id="seatTable"></table>
+
+    <div class="waiting-area">
+      <h2>👦 待選小朋友 👧</h2>
+      <div class="waiting-list" id="waitingList"></div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button id="btnNewQ">🎯 出題</button>
+    <button id="btnReset">🔄 重設</button>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+  <div class="progress" id="progress"></div>
+
+  <div class="reward-overlay" id="rewardOverlay">
+    <div class="reward-box">
+      <div class="flower">🌺</div>
+      <h2>恭喜你完成任務！</h2>
+      <p style="font-size: 22px; color: #7f8c8d;">送你一朵小紅花！</p>
+      <button id="btnPlayAgain">再玩一次</button>
+    </div>
+  </div>
+
+<script>
+  // ====== 學生資料 ======
+  const students = [
+    { id: 'student1', name: '心悦', emoji: '👧🏻' },
+    { id: 'student2', name: '可晴', emoji: '👩🏻' },
+    { id: 'student3', name: '浩庭', emoji: '👦🏻' },
+    { id: 'student4', name: '柏康', emoji: '🧑🏻' }
+  ];
+
+  // ====== 常數 ======
+  const TOTAL_ROWS = 5;
+  const TOTAL_COLS = 5;
+
+  // ====== 狀態 ======
+  let currentQuestion = null;
+  let correctStreak = 0;
+  let placedStudents = {};
+  // 拖曳狀態：改為 pointer 事件
+  let dragState = null; // { studentId, from, row, col, ghostEl, startX, startY }
+
+  // ====== DOM ======
+  const seatTable = document.getElementById('seatTable');
+  const waitingList = document.getElementById('waitingList');
+  const questionBox = document.getElementById('questionBox');
+  const feedback = document.getElementById('feedback');
+  const progress = document.getElementById('progress');
+  const rewardOverlay = document.getElementById('rewardOverlay');
+
+  const colorClasses = ['color-pink', 'color-yellow', 'color-green', 'color-blue', 'color-purple'];
+
+  // ====== 初始化座位表（固定為：左側標「個」、底部標「行」） ======
+  function redrawTable() {
+    seatTable.innerHTML = '';
+
+    for (let visualRow = 0; visualRow < TOTAL_ROWS; visualRow++) {
+      const tr = document.createElement('tr');
+
+      const leftLabelTd = document.createElement('td');
+      leftLabelTd.className = 'col-label-left';
+      leftLabelTd.textContent = `第 ${visualRow + 1} 個`;
+      tr.appendChild(leftLabelTd);
+
+      for (let col = 1; col <= TOTAL_COLS; col++) {
+        const td = document.createElement('td');
+
+        const seat = document.createElement('div');
+        const colorIndex = (visualRow + col - 1) % 5;
+        seat.className = `seat ${colorClasses[colorIndex]}`;
+        seat.dataset.row = visualRow + 1;
+        seat.dataset.col = col;
+        seat.id = `seat-${visualRow + 1}-${col}`;
+
+        // pointer 事件用于放置检测（只监听 pointerup，不阻止冒泡）
+        td.appendChild(seat);
+        tr.appendChild(td);
+      }
+
+      seatTable.appendChild(tr);
+    }
+
+    // 底部標籤列
+    const bottomTr = document.createElement('tr');
+    const bottomCornerTd = document.createElement('td');
+    bottomCornerTd.className = 'col-label-left';
+    bottomTr.appendChild(bottomCornerTd);
+
+    for (let col = 1; col <= TOTAL_COLS; col++) {
+      const td = document.createElement('td');
+      td.className = 'row-label-bottom';
+      td.textContent = `第 ${col} 行`;
+      bottomTr.appendChild(td);
+    }
+    seatTable.appendChild(bottomTr);
+
+    // 老師的桌子列
+    const teacherTr = document.createElement('tr');
+    const teacherCornerTd = document.createElement('td');
+    teacherCornerTd.className = 'col-label-left';
+    teacherTr.appendChild(teacherCornerTd);
+
+    const teacherTd = document.createElement('td');
+    teacherTd.className = 'teacher-desk';
+    teacherTd.colSpan = TOTAL_COLS;
+    teacherTd.textContent = '🐘 老師的桌子 (講台區)';
+    teacherTr.appendChild(teacherTd);
+    seatTable.appendChild(teacherTr);
+  }
+
+  // ====== 初始化待選區 ======
+  function initWaitingArea() {
+    waitingList.innerHTML = '';
+    students.forEach(s => {
+      const slot = document.createElement('div');
+      slot.className = 'waiting-slot';
+      slot.dataset.studentId = s.id;
+
+      const studentEl = createStudentEl(s);
+      slot.appendChild(studentEl);
+
+      const nameTag = document.createElement('span');
+      nameTag.className = 'name-tag';
+      nameTag.textContent = s.name;
+      slot.appendChild(nameTag);
+
+      waitingList.appendChild(slot);
+    });
+  }
+
+  // ====== 建立學生元素（支援 pointer 拖曳） ======
+  function createStudentEl(student) {
+    const el = document.createElement('div');
+    el.className = 'student';
+    el.textContent = student.emoji;
+    el.dataset.studentId = student.id;
+    // 不使用 draggable，改用 pointer 事件
+    el.addEventListener('pointerdown', handlePointerDown);
+    return el;
+  }
+
+  // ====== Pointer 拖曳核心逻辑 ======
+  function handlePointerDown(e) {
+    // 只响应主按键或触摸
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const studentEl = e.currentTarget.closest('.student');
+    if (!studentEl) return;
+
+    e.preventDefault();
+    // 阻止页面滚动（在 student 上已设置 touch-action: none，这里再确保）
+    if (e.cancelable) e.preventDefault();
+
+    const studentId = studentEl.dataset.studentId;
+    let from = 'waiting';
+    let row = null, col = null;
+
+    const seat = studentEl.closest('.seat');
+    if (seat) {
+      from = 'seat';
+      row = parseInt(seat.dataset.row);
+      col = parseInt(seat.dataset.col);
+    }
+
+    // 记录拖拽状态
+    dragState = {
+      studentId,
+      from,
+      row,
+      col,
+      ghostEl: null,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      originalEl: studentEl,
+      originalParent: studentEl.parentNode,
+    };
+
+    // 添加拖动样式
+    studentEl.classList.add('dragging');
+
+    // 绑定全局 pointermove / pointerup
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('pointercancel', handlePointerUp);
+  }
+
+  function handlePointerMove(e) {
+    if (!dragState) return;
+    e.preventDefault();
+
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // 如果移动距离超过 5px，才开始视为拖拽，并创建 ghost 元素
+    if (!dragState.moved && distance > 5) {
+      dragState.moved = true;
+      // 创建 ghost 跟随手指
+      const student = students.find(s => s.id === dragState.studentId);
+      const ghost = document.createElement('div');
+      ghost.className = 'student';
+      ghost.textContent = student.emoji;
+      ghost.style.position = 'fixed';
+      ghost.style.left = e.clientX + 'px';
+      ghost.style.top = e.clientY + 'px';
+      ghost.style.transform = 'translate(-50%, -50%)';
+      ghost.style.fontSize = '46px';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.zIndex = '1000';
+      ghost.style.opacity = '0.85';
+      ghost.style.width = 'auto';
+      ghost.style.height = 'auto';
+      ghost.style.touchAction = 'none';
+      document.body.appendChild(ghost);
+      dragState.ghostEl = ghost;
+
+      // 隐藏原始元素
+      if (dragState.originalEl) {
+        dragState.originalEl.style.opacity = '0.3';
+      }
+    }
+
+    // 更新 ghost 位置
+    if (dragState.ghostEl) {
+      dragState.ghostEl.style.left = e.clientX + 'px';
+      dragState.ghostEl.style.top = e.clientY + 'px';
+    }
+
+    // 高亮当前悬停的元素
+    if (dragState.moved) {
+      // 移除所有高亮
+      document.querySelectorAll('.seat.over, .waiting-slot.over').forEach(el => el.classList.remove('over'));
+      const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
+      if (elemUnder) {
+        const seat = elemUnder.closest('.seat');
+        const waitingSlot = elemUnder.closest('.waiting-slot');
+        if (seat) seat.classList.add('over');
+        else if (waitingSlot) waitingSlot.classList.add('over');
+      }
+    }
+  }
+
+  function handlePointerUp(e) {
+    if (!dragState) return;
+
+    document.removeEventListener('pointermove', handlePointerMove);
+    document.removeEventListener('pointerup', handlePointerUp);
+    document.removeEventListener('pointercancel', handlePointerUp);
+
+    const { studentId, ghostEl, moved, originalEl } = dragState;
+
+    // 清理 ghost
+    if (ghostEl) {
+      ghostEl.remove();
+    }
+
+    // 移除高亮
+    document.querySelectorAll('.seat.over, .waiting-slot.over').forEach(el => el.classList.remove('over'));
+
+    // 恢复原始元素透明度
+    if (originalEl) {
+      originalEl.style.opacity = '';
+      originalEl.classList.remove('dragging');
+    }
+
+    // 如果没有移动，视为点击，不进行任何操作
+    if (!moved) {
+      dragState = null;
+      return;
+    }
+
+    // 获取手指下方的元素
+    const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
+    if (!elemUnder) {
+      dragState = null;
+      return;
+    }
+
+    const targetSeat = elemUnder.closest('.seat');
+    const targetWaiting = elemUnder.closest('.waiting-slot');
+
+    if (targetSeat) {
+      const targetRow = parseInt(targetSeat.dataset.row);
+      const targetCol = parseInt(targetSeat.dataset.col);
+      moveStudentToSeat(studentId, targetRow, targetCol);
+      autoCheckAnswer();
+    } else if (targetWaiting) {
+      moveStudentToWaiting(studentId);
+    } else {
+      // 拖到空白区域，可以放回待选区（可选）
+      // moveStudentToWaiting(studentId);
+    }
+
+    dragState = null;
+  }
+
+  // ====== 移动学生（适配新的拖拽逻辑） ======
+  function moveStudentToSeat(studentId, row, col) {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    // 检查目标座位是否已有学生
+    const targetSeat = document.querySelector(`#seat-${row}-${col}`);
+    if (!targetSeat) return;
+
+    const existingEl = targetSeat.querySelector('.student');
+    if (existingEl) {
+      // 将原有学生移回待选区
+      moveStudentToWaiting(existingEl.dataset.studentId);
+    }
+
+    // 从原位置移除
+    if (dragState && dragState.from === 'seat') {
+      const oldSeat = document.querySelector(`#seat-${dragState.row}-${dragState.col}`);
+      if (oldSeat) {
+        const oldStudent = oldSeat.querySelector('.student');
+        if (oldStudent) oldStudent.remove();
+        const oldMark = oldSeat.querySelector('.mark');
+        if (oldMark) oldMark.remove();
+      }
+    } else {
+      // 从待选区移除
+      const oldSlot = document.querySelector(`.waiting-slot[data-student-id="${studentId}"]`);
+      if (oldSlot) {
+        const oldStudent = oldSlot.querySelector('.student');
+        if (oldStudent) oldStudent.remove();
+      }
+    }
+
+    // 移除目标座位上的旧标记
+    const oldMark = targetSeat.querySelector('.mark');
+    if (oldMark) oldMark.remove();
+
+    // 在目标座位创建新学生元素
+    const newStudentEl = createStudentEl(student);
+    targetSeat.appendChild(newStudentEl);
+
+    placedStudents[studentId] = { row, col };
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+  }
+
+  function moveStudentToWaiting(studentId) {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    // 如果之前在座位上，清除座位上的元素和标记
+    if (placedStudents[studentId]) {
+      const { row, col } = placedStudents[studentId];
+      const seat = document.querySelector(`#seat-${row}-${col}`);
+      if (seat) {
+        const el = seat.querySelector('.student');
+        if (el) el.remove();
+        const mark = seat.querySelector('.mark');
+        if (mark) mark.remove();
+      }
+      delete placedStudents[studentId];
+    }
+
+    // 将学生放回待选区的空位
+    const existingSlot = document.querySelector(`.waiting-slot[data-student-id="${studentId}"]`);
+    if (existingSlot && !existingSlot.querySelector('.student')) {
+      const studentEl = createStudentEl(student);
+      existingSlot.insertBefore(studentEl, existingSlot.firstChild);
+    }
+  }
+
+  // ====== 出题 ======
+  function newQuestion() {
+    document.querySelectorAll('.mark').forEach(m => m.remove());
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+
+    const randomStudent = students[Math.floor(Math.random() * students.length)];
+    const qRow = Math.floor(Math.random() * TOTAL_ROWS) + 1;
+    const qCol = Math.floor(Math.random() * TOTAL_COLS) + 1;
+
+    currentQuestion = { studentId: randomStudent.id, row: qRow, col: qCol };
+
+    questionBox.innerHTML = `請把 <span class="highlight">${randomStudent.emoji} ${randomStudent.name}</span> 放在 <span class="highlight">第 ${qRow} 行 第 ${qCol} 個</span> 座位`;
+  }
+
+  // ====== 自动检查答案 ======
+  function autoCheckAnswer() {
+    if (!currentQuestion) return;
+
+    document.querySelectorAll('.mark').forEach(m => m.remove());
+
+    const studentId = currentQuestion.studentId;
+    const qRow = currentQuestion.row;
+    const qCol = currentQuestion.col;
+    const placed = placedStudents[studentId];
+
+    if (!placed) return;
+
+    const targetRow = qCol;
+    const targetCol = qRow;
+
+    if (placed.row === targetRow && placed.col === targetCol) {
+      const seat = document.querySelector(`#seat-${placed.row}-${placed.col}`);
+      const mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = '✅';
+      seat.appendChild(mark);
+
+      feedback.textContent = '太棒了！給你一個讚！👍';
+      feedback.className = 'feedback correct';
+
+      correctStreak++;
+      updateProgress();
+
+      if (correctStreak >= 3) {
+        setTimeout(() => {
+          rewardOverlay.classList.add('show');
+        }, 800);
+      }
+    } else {
+      const seat = document.querySelector(`#seat-${placed.row}-${placed.col}`);
+      if (seat) {
+        const mark = document.createElement('span');
+        mark.className = 'mark';
+        mark.textContent = '❌';
+        seat.appendChild(mark);
+      }
+
+      feedback.textContent = '哎呀，再想一想喔！相信你可以的！💪';
+      feedback.className = 'feedback wrong';
+    }
+  }
+
+  function updateProgress() {
+    const stars = '⭐'.repeat(correctStreak);
+    progress.textContent = correctStreak > 0 ? `連續答對：${stars}` : '';
+  }
+
+  // ====== 重设 ======
+  function resetAll() {
+    currentQuestion = null;
+    placedStudents = {};
+    dragState = null;
+    questionBox.innerHTML = '請點擊「出題」開始練習 😊';
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+    rewardOverlay.classList.remove('show');
+
+    document.querySelectorAll('.seat').forEach(seat => {
+      seat.innerHTML = '';
+    });
+
+    document.querySelectorAll('.mark').forEach(m => m.remove());
+
+    // 移除可能残留的 ghost
+    document.querySelectorAll('.student[style*="position: fixed"]').forEach(el => el.remove());
+
+    initWaitingArea();
+  }
+
+  // ====== 事件绑定 ======
+  document.getElementById('btnNewQ').addEventListener('click', newQuestion);
+  document.getElementById('btnReset').addEventListener('click', resetAll);
+  document.getElementById('btnPlayAgain').addEventListener('click', resetAll);
+
+  // ====== 启动 ======
+  redrawTable();
+  initWaitingArea();
+  updateProgress();
+
+  // 防止页面因触摸拖拽而滚动（额外保险）
+  document.addEventListener('touchmove', (e) => {
+    if (dragState && dragState.moved) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // 阻止鼠标拖拽图片/文字选择
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+</script>
+</body>
+</html>
